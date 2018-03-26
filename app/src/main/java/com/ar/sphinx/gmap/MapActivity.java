@@ -1,8 +1,9 @@
 package com.ar.sphinx.gmap;
 
 import android.Manifest;
-import android.app.Activity;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -11,6 +12,9 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -19,12 +23,14 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
-import java.util.Map;
+import java.io.IOException;
+import java.util.ArrayList;
+
 
 /**
  * Created by sPhinx on 19/03/18.
@@ -39,12 +45,42 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 	private boolean locationPermissionsGranted = false;
 	private GoogleMap gMap;
 	private FusedLocationProviderClient fusedLocationProviderClient;
+	private EditText etQuery;
+	private ImageView ivSearch;
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_map);
+		init();
 		getLocationPermissions();
+	}
+
+	private void init() {
+		ivSearch = findViewById(R.id.ic_search);
+		etQuery = findViewById(R.id.et_search_query);
+		ivSearch.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				geoLocate();
+			}
+		});
+	}
+
+	private void geoLocate() {
+		String searchText = etQuery.getText().toString();
+		Geocoder geocoder = new Geocoder(this);
+		ArrayList<Address> addressList = new ArrayList<>();
+		try {
+			addressList = (ArrayList<Address>) geocoder.getFromLocationName(searchText,1);
+		}catch(IOException ex){
+			Log.e(TAG, "geoLocate: " + ex.getLocalizedMessage());
+		}
+		if(addressList.size()>0){
+			Address address = addressList.get(0);
+			Toast.makeText(this,address.toString(),Toast.LENGTH_LONG).show();
+		}
+
 	}
 
 	public void getCurrentLocation() {
@@ -57,7 +93,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 					public void onComplete(@NonNull Task task) {
 						if(task.isSuccessful()) {
 							Location currentLocation = (Location) task.getResult();
-							moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()), 15f);
+							moveCamera(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
 						}
 					}
 				});
@@ -67,8 +103,13 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 		}
 	}
 
-	public void moveCamera(LatLng latLng, float zoom) {
-		gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, zoom));
+	public void moveCamera(LatLng latLng) {
+		gMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f));
+		MarkerOptions options = new MarkerOptions()
+				.position(latLng)
+				.title("My Location");
+		gMap.addMarker(options);
+
 	}
 
 	public void initMap() {
